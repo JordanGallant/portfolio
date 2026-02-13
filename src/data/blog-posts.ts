@@ -18,7 +18,7 @@ export const blogPosts: BlogPost[] = [
     readTime: "8 min read",
     tags: ["Cybersecurity", "WordPress", "Web Security"],
     content: `
-<img src="/top.jpeg" alt="HOR Berlin Maximum Heat contest results" style="width:100%;border-radius:8px;margin-bottom:1.5rem;border:1px solid #1a1a2e;" />
+<img src="/top.jpg" alt="HOR Berlin Maximum Heat contest results" style="width:100%;border-radius:8px;margin-bottom:1.5rem;border:1px solid #1a1a2e;" />
 
 <h2>Introduction</h2>
 <p>HOR Berlin — one of the most well-known underground electronic music streaming platforms — was running their <strong>Maximum Heat DJ Contest</strong>, an online competition where DJs submit mixes and the public votes for their favourite. As a DJ who entered the contest and a cybersecurity enthusiast, I naturally wanted to understand how the voting system worked under the hood.</p>
