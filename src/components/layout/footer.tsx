@@ -4,8 +4,8 @@ export function Footer() {
   return (
     <footer className="border-t border-cyber-border bg-cyber-dark/50 py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="text-sm text-muted-foreground">
+        <div className="flex flex-col items-center gap-4 md:flex-row md:justify-between">
+          <div className="text-sm text-muted-foreground text-center md:text-left">
             &copy; {new Date().getFullYear()} Jordan Gallant. All rights
             reserved.
           </div>

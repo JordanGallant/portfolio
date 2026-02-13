@@ -96,7 +96,7 @@ export function Globe() {
   return (
     <div
       ref={containerRef}
-      className="w-[300px] h-[300px] opacity-70 hover:opacity-100 transition-opacity duration-500"
+      className="w-[200px] h-[200px] md:w-[300px] md:h-[300px] opacity-70 hover:opacity-100 transition-opacity duration-500 scale-[0.67] md:scale-100 origin-center"
     />
   );
 }
