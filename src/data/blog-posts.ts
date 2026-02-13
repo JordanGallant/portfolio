@@ -501,11 +501,9 @@ zip.generateAsync({ type: "blob" }).then(content => {
 
 <p>The process went roughly like this:</p>
 <ol>
-<li><strong>Solder paste & stencil</strong> — applied solder paste to the SMD pads using a stencil for consistency</li>
 <li><strong>Place components</strong> — positioned each component with tweezers under magnification</li>
-<li><strong>Reflow</strong> — used a hot air station to reflow the solder on the smaller components</li>
-<li><strong>Through-hole</strong> — hand-soldered the larger through-hole parts like the audio jack, USB port, and pin headers</li>
-<li><strong>Inspect & fix</strong> — checked every joint under magnification, reflowed any cold joints or bridges</li>
+<li><strong>Hand-solder</strong> — soldered every component by hand with an iron, from the tiny SMD parts to the larger through-hole parts like the audio jack, USB port, and pin headers</li>
+<li><strong>Inspect & fix</strong> — checked every joint under magnification, fixed any cold joints or bridges</li>
 </ol>
 
 <p>There were a few tense moments — a bridged pin on the microcontroller that took careful work with solder wick to fix, and one capacitor that I accidentally tombstoned on the first attempt. But after a few hours of focused work, the board was fully populated and ready for testing.</p>
