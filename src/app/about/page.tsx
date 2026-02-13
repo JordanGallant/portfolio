@@ -49,6 +49,7 @@ const profileData = {
   name: "Jordan Gallant",
   age: 24,
   origin: "South Africa",
+  based_in: "Utrecht, The Netherlands",
   focus: ["Cybersecurity", "Blockchain", "Web3"],
   status: "Building the future",
 };
@@ -88,6 +89,10 @@ export default function AboutPage() {
                 &quot;: &quot;
                 <span className="text-foreground">{profileData.origin}</span>
                 &quot;,{"\n"}
+                {"  "}&quot;<span className="text-neon-green">based_in</span>
+                &quot;: &quot;
+                <span className="text-foreground">{profileData.based_in}</span>
+                &quot;,{"\n"}
                 {"  "}&quot;<span className="text-neon-green">focus</span>
                 &quot;: [&quot;
                 <span className="text-foreground">
@@ -110,8 +115,8 @@ export default function AboutPage() {
         <div className="space-y-4 mb-12 text-muted-foreground leading-relaxed">
           <p>
             I&apos;m a cybersecurity researcher and blockchain developer from
-            South Africa with a deep passion for technology and its
-            intersection with security. My journey started with curiosity about
+            South Africa, currently based in Utrecht, The Netherlands, with a
+            deep passion for technology and its intersection with security. My journey started with curiosity about
             how systems work — and how they break.
           </p>
           <p>
