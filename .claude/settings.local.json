@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd //c \"where gh\")",
+      "Bash(powershell -Command:*)",
+      "Bash(\"C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe\" auth status)",
+      "Bash(npx vercel link:*)",
+      "Bash(npx vercel:*)",
+      "Bash(VERCEL_ORG_ID=team_BgH1l5o4JVrJGSrNI0hWrU65 npx vercel link:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
+    ]
+  }
+}
